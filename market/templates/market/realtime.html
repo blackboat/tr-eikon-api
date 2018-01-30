@@ -1,0 +1,126 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>Trading Strategy</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="{% static 'bootstrap/bootstrap.min.css' %}">
+  <link rel="stylesheet" href="{% static 'css/font-awesome.min.css' %}">
+  <link rel="stylesheet" href="{% static 'bootstrap-datetimepicker/bootstrap-datetimepicker.css' %}">
+  <link rel="stylesheet" href="{% static 'dataTables/dataTables.bootstrap.min.css' %}">
+  <link rel="stylesheet" href="{% static 'jquery-ui/jquery-ui.css' %}">
+  <script type="text/javascript" src="{% static 'jquery/jquery-2.1.1.min.js' %}"></script>
+  <script type="text/javascript" src="{% static 'bootstrap/bootstrap.min.js' %}"></script>
+  <script type="text/javascript" src="{% static 'dataTables/jquery.dataTables.min.js' %}"></script>
+  <script type="text/javascript" src="{% static 'dataTables/dataTables.bootstrap.min.js' %}"></script>
+  <script type="text/javascript" src="{% static 'js/moment-with-locales.js' %}"></script>
+  <script type="text/javascript" src="{% static 'bootstrap-datetimepicker/bootstrap-datetimepicker.js' %}"></script>
+  <script type="text/javascript" src="{% static 'jquery-ui/jquery-ui.js' %}"></script>
+</head>
+<body>
+
+<div class="container">
+  <h2>Real-time Data</h2>
+  {% if error %}
+    <div style="color: red;">{{ error }}</div>
+  {% else %}
+    <form method="post" style="margin: 20px 0;">{% csrf_token %}
+    <label>Add RIC Codes:</label>
+    <input id="codes" name="codes" size="100" />
+    <input type="submit" class="btn btn-sm btn-default" val="Submit" />
+    </form>
+    <table class="table table-striped" id="data">
+      <thead>
+        <tr>
+          {% for row in codes %}
+          <th>{{ row }}</th>
+          {% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="data">
+        </tr>
+      </tbody>
+    </table>
+  {% endif %}
+<script type="text/javascript">
+  $(function () {
+    var availableTags = {{ codes|safe }};
+    function split( val ) {
+      return val.split( /,\s*/ );
+    }
+    function extractLast( term ) {
+      return split( term ).pop();
+    }
+    $('#codes')
+      .on( "keydown", function( event ) {
+        if ( event.keyCode === $.ui.keyCode.TAB && $( this ).autocomplete( "instance" ).menu.active ) {
+          event.preventDefault();
+        }
+      })
+      .autocomplete({
+        minLength: 0,
+        source: function( request, response ) {
+          // delegate back to autocomplete, but extract the last term
+          response( $.ui.autocomplete.filter(
+            availableTags, extractLast( request.term ) ) );
+        },
+        focus: function() {
+          // prevent value inserted on focus
+          return false;
+        },
+        select: function( event, ui ) {
+          var terms = split( this.value );
+          // remove the current input
+          terms.pop();
+          // add the selected item
+          terms.push( ui.item.value );
+          // add placeholder to get the comma-and-space at the end
+          terms.push( "" );
+          this.value = terms.join( ", " );
+          return false;
+        }
+    });
+    var ws_scheme = window.location.protocol == "https:" ? "wss" : "ws";
+    var chatsock = new ReconnectingWebSocket(ws_scheme + '://' + window.location.host + "/realtime");
+    // var ws = new WebSocket("ws://54.152.240.172/websocket/"),
+    var messages = document.createElement('ul');
+    ws.onmessage = function (event) {
+        if (event.data != '') {
+            content = '';
+            data = event.data.split(',');
+            for (i=0; i<data.length; i++)
+                content += '<td>'+data[i]+'</td>';
+            $('.data').html(content);
+        }
+    };
+    ws.onopen = function(event) {
+        // ws.send('EUR=');
+    }
+    document.body.appendChild(messages);
+
+
+    
+    // chatsock.onmessage = function(message) {
+    //     var data = JSON.parse(message.data);
+    //     var chat = $("#chat")
+    //     var ele = $('<tr></tr>')
+
+    //     ele.append(
+    //         $("<td></td>").text(data.timestamp)
+    //     )
+    //     ele.append(
+    //         $("<td></td>").text(data.handle)
+    //     )
+    //     ele.append(
+    //         $("<td></td>").text(data.message)
+    //     )
+        
+    //     chat.append(ele)
+    // };
+  });
+</script>
+</body>
+</html>

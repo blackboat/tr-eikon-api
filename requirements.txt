@@ -1,0 +1,2 @@
+django==1.11
+wfastcgi==3.0.0
